@@ -113,106 +113,146 @@ class _LoginPageState extends State<LoginPage> {
           fit: BoxFit.cover, // 화면에 꽉 차게 설정
         ),
       ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent, // Scaffold의 배경을 투명하게 설정
-        appBar: AppBar(
-          backgroundColor: Colors.transparent, // AppBar 배경도 투명하게 설정
-          title: Text(''),
-          automaticallyImplyLeading: false,
-        ),
-        body: SingleChildScrollView(
-          padding: EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Image.asset(
-                'lib/assets/cat.png',
-                width: 200, // 이미지 너비 조절
-                height: 200, // 이미지 높이 조절
-              ),
-              SizedBox(height: 10),
-              Text(
-                'AI 헬스케어 급식기',
-                style: TextStyle(fontSize: 20),
-              ),
-              Text(
-                '냥터링',
-                style: TextStyle(color: Colors.black, fontSize: 30, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 40),
-              TextField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: '사용자 아이디',
-                  labelStyle: TextStyle(
-                      color: Colors.black
+      child: Padding(
+        padding: const EdgeInsets.only(top: 60.0), // 이미지 위쪽 여백
+        child: Scaffold(
+          backgroundColor: Colors.transparent, // Scaffold의 배경을 투명하게 설정
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            title: Text(''),
+            automaticallyImplyLeading: false,
+          ),
+          body: SingleChildScrollView(
+            padding: EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Image.asset(
+                  'lib/assets/cat.png',
+                  width: 200,
+                  height: 200,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'AI 헬스케어 급식기',
+                  style: TextStyle(fontSize: 20, color: Color(0xff4a4a4a)),
+                ),
+                Text(
+                  '건강하냥',
+                  style: TextStyle(
+                    color: Color(0xff4a4a4a),
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xff5f33e1), width: 2),
+                ),
+                SizedBox(height: 30),
+
+                // 🔹 사용자 아이디 입력 박스
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  border: OutlineInputBorder(
+                  child: TextField(
+                    controller: _usernameController,
+                    decoration: InputDecoration(
+                      labelText: '사용자 아이디',
+                      labelStyle: TextStyle(
+                        color: Color(0xffaaaaaa),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none, // 테두리 제거
+                      ),
+                      contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    cursorColor: Colors.black,
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // 🔹 비밀번호 입력 박스
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: '비밀번호',
+                      labelStyle: TextStyle(
+                        color: Color(0xffaaaaaa),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none, // 테두리 제거
+                      ),
+                      contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    cursorColor: Colors.black,
                   ),
                 ),
-                cursorColor: Colors.black,
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: '비밀번호',
-                  labelStyle: TextStyle(
-                      color: Colors.black
+
+                SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: _login,
+                  child: Text(
+                    '로그인',
+                    style: TextStyle(color: Colors.white, fontSize: 21),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xff5f33e1), width: 2),
-                    borderRadius: BorderRadius.circular(12), // 이 부분이 둥근 모서리를 만들어줘요.
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), // 여기도 똑같이 추가해줘야 해요.
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xff5f33e1),
+                    minimumSize: Size(double.infinity, 58),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                cursorColor: Colors.black,
-              ),
-              SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: _login,
-                child: Text(
-                  '로그인',
-                  style: TextStyle(color: Colors.white, fontSize: 25),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xff5f33e1),
-                  minimumSize: Size(double.infinity, 58),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12), // 이 부분이 모서리 둥글기야!
+                SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/signup');
+                    print('회원가입 버튼 클릭됨');
+                  },
+                  child: Text(
+                    '회원가입',
+                    style: TextStyle(
+                      color: Color(0xff5f33e1),
+                      decoration: TextDecoration.underline,
+                      decorationColor: Color(0xff5f33e1),
+                      decorationThickness: 1.5,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: 20),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/signup');
-                  print('회원가입 버튼 클릭됨');
-                },
-                child: Text('회원가입',
-                  style: TextStyle(color: Color(0xff5f33e1)),),
-              ),
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.pushNamed(context, '/find_password');
-              //     print('비밀번호 찾기 버튼 클릭됨');
-              //   },
-              //   child: Text('비밀번호 찾기',
-              //     style: TextStyle(color: Color(0xff5f33e1)),),
-              // ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    );
+        );
   }
 
   @override

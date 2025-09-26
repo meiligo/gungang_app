@@ -176,7 +176,7 @@ class _ChangeMovePageState extends State<ChangeMovePage> {
           onPressed: (){
             Navigator.pushNamed(context, '/moveanalyze');
           },
-          child: Text("로그 확인", style: TextStyle(fontSize: 20, color: Colors.black)),
+          child: Text("로그 확인", style: TextStyle(fontSize: 16, color: Colors.black)),
           style: ElevatedButton.styleFrom(
             padding: EdgeInsets.symmetric(vertical: 15),
             backgroundColor: Colors.white,// 버튼 내부 상하 여백

@@ -402,11 +402,12 @@ class _HomePageState extends State<HomePage> {
   Widget _buildGraphSection({
     required String title,
     required VoidCallback onTap, // 오타 수정: Void한 제거
+
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), //급식량 폰트 사이즈 조절
         SizedBox(height: 15),
         GestureDetector(
           onTap: onTap,
@@ -558,9 +559,9 @@ class _HomePageState extends State<HomePage> {
           children: <Widget>[
             SizedBox(height: 10),
             Text('$_catName', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 6),
+            SizedBox(height: 3),
             Text('$_catAge', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 6),
+            SizedBox(height: 3),
             Text('$_catWeight', style: TextStyle(fontSize: 16)),
           ],
         ),
@@ -654,7 +655,7 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('냥터링 ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),),
+            Text('건강하냥 ', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold),),
             Image.asset(
               'lib/assets/cat_icon.png',
               width: 28, // 이미지 너비 조절
@@ -807,21 +808,42 @@ class _HomePageState extends State<HomePage> {
                 }
               },
             ),
-            SizedBox(height: 30),
-            _buildChartSection(
+            SizedBox(height: 26),
+            _buildTitledChartCard(
               title: '일일 활동량',
-              yAxisLabel: '',
-              chartWidget: _buildDailyBarChart(),
-              onTap: (){
-                Navigator.pushNamed(context, '/changemove');
-              }
+              rightLabel: '',
+              chart: _buildDailyBarChart(),
+              onTap: () { Navigator.pushNamed(context, '/changemove'); },
+              height: 200,
+              bgColor: Colors.white,
+              leading: Image.asset(    // ✅ 추가됨
+                'lib/assets/hairball_icon.png',
+                width: 24,
+                height: 24,
+              ),
             ),
-            SizedBox(height: 30),
-            _buildGraphSection(
+            SizedBox(height: 35),
+            _buildTitledChartCard(
               title: '급식량',
-              onTap: () {
-                Navigator.pushNamed(context, '/feedrecord');
-              },
+              chart: _buildFeedingBarChart(),
+              onTap: () { Navigator.pushNamed(context, '/feedrecord'); },
+              height: 200,
+              titleFontSize: 20,
+              bgColor: const Color(0xffffffff),               // 배경색 화이트로 변경
+              border: Border.all(color: Colors.white, width: 1),
+              leading: Image.asset(    // ✅ 추가됨
+                'lib/assets/food_icon.png',
+                width: 24,
+                height: 24,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  spreadRadius: 1,
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
           ],
         ),
@@ -840,7 +862,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Text(
               title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
               yAxisLabel,
@@ -875,4 +897,155 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
+
+
+//없애도 된다고 하는데 없애면 자꾸 화면이 안나옴
+// ChartCard 빌더 함수
+  Widget _buildTitledChartCard({
+    required String title,
+    required Widget chart,
+    VoidCallback? onTap,
+    String? rightLabel,                  // 오른쪽 작은 라벨(필요 없으면 null)
+    double titleFontSize = 20,
+    double height = 200,
+    Color bgColor = Colors.white,
+    EdgeInsets contentPadding = const EdgeInsets.only(top: 10, right: 10, left: 10),
+    List<BoxShadow>? boxShadow,
+    BorderRadius borderRadius = const BorderRadius.all(Radius.circular(12)),
+    BoxBorder? border,                   // 필요 시 흰 테두리 등
+    Widget? leading,                     // ✅ 아이콘/이미지 추가 가능
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row( // ← 왼쪽 영역: leading + title
+              children: [
+                if (leading != null) ...[
+                  leading,
+                  const SizedBox(width: 6), // 아이콘과 글자 간격
+                ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            if (rightLabel != null)
+              Text(
+                rightLabel,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: borderRadius,
+              boxShadow: boxShadow ??
+                  [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      spreadRadius: 1,
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+              border: border,
+            ),
+            child: Padding(
+              padding: contentPadding,
+              child: chart,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+// 급식량 바차트 빌더 (클래스 상태값 사용)
+  Widget _buildFeedingBarChart() {
+    if (_isFeedingLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_dailyFeedingBars.isEmpty) {
+      return const Center(child: Text("데이터가 없습니다"));
+    }
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _maxDailyFeeding,
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 35,
+              interval: 15,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 10),
+                  textAlign: TextAlign.left,
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < _feedingDateLabels.length) {
+                  return Text(
+                    _feedingDateLabels[index],
+                    style: const TextStyle(fontSize: 10),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        borderData: FlBorderData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 15,
+          getDrawingHorizontalLine: (value) {
+            return const FlLine(color: Colors.black, strokeWidth: 0.5);
+          },
+        ),
+        barGroups: _dailyFeedingBars.map((group) {
+          return BarChartGroupData(
+            x: group.x,
+            barRods: group.barRods.map((rod) {
+              return BarChartRodData(
+                toY: rod.toY,
+                color: const Color(0xffab94ee), // 급식량 바 색상
+                width: 20,
+                borderRadius: BorderRadius.circular(5),
+              );
+            }).toList(),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+
+
+
+
 }

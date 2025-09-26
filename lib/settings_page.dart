@@ -19,13 +19,13 @@ class SettingsPage extends StatelessWidget {
         children: [
           Image.asset(
             'lib/assets/set_icon.png', // 여기에 이미지 경로를 넣어줘
-            width: 24, // 아이콘 크기 조절
-            height: 24,
+            width: 26, // 아이콘 크기 조절
+            height: 26,
           ),
-          const SizedBox(width: 8), // 아이콘과 텍스트 사이 간격
+          const SizedBox(width: 3), // 아이콘과 텍스트 사이 간격
           const Text(
             '설정',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -36,6 +36,7 @@ class SettingsPage extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+
       body: Padding(
         // 전체적으로 약간의 여백 주기
         padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
@@ -43,6 +44,7 @@ class SettingsPage extends StatelessWidget {
           // 버튼들을 세로로 나열
           crossAxisAlignment: CrossAxisAlignment.stretch, // 버튼 너비 최대로 채우기
           children: <Widget>[
+            SizedBox(height: 120), // 버튼 사이 간격
             _buildSettingsButton(
               context: context,
               label: '비밀번호 변경',
@@ -51,7 +53,7 @@ class SettingsPage extends StatelessWidget {
                 print('비밀번호 변경 버튼 클릭됨');
               },
             ),
-            SizedBox(height: 50), // 버튼 사이 간격
+            SizedBox(height: 40), // 버튼 사이 간격
             _buildSettingsButton(
               context: context,
               label: '고양이 정보 수정',
@@ -60,7 +62,7 @@ class SettingsPage extends StatelessWidget {
                 print('고양이 정보 수정 버튼 클릭됨');
               },
             ),
-            SizedBox(height: 50), // 버튼 사이 간격
+            SizedBox(height: 40), // 버튼 사이 간격
             _buildSettingsButton(
               context: context,
               label: '어플리케이션 설정',
