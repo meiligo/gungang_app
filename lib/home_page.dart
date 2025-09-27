@@ -51,7 +51,6 @@ class _HomePageState extends State<HomePage> {
   List<String> _feedingDateLabels = [];
   String? _localCatImagePath; // ✅ 로컬 저장된 프로필 이미지 경로
 
-
   late Future<void> _loadCatDataFuture;
 
   @override
@@ -63,7 +62,6 @@ class _HomePageState extends State<HomePage> {
     _loadDailyFeedingData();
   }
 
-
   Future<void> _loadLocalCatImage() async {
     final prefs = await SharedPreferences.getInstance();
     final p = prefs.getString('cat_image_path');
@@ -74,7 +72,6 @@ class _HomePageState extends State<HomePage> {
       debugPrint('⚠️ 로컬 이미지 없음');
     }
   }
-
 
   Future<void> _loadCatData() async {
     try {
@@ -97,23 +94,23 @@ class _HomePageState extends State<HomePage> {
               ? (cat['current_weight'] as num).toDouble()
               : null;
 
-// (선택) 감지 ID가 있다면 같이 보냄 — 없으면 주석 유지/삭제해도 됩니다.
+          // (선택) 감지 ID
           final String? detectionId =
           (cat['last_detection_id'] ?? cat['detection_id'])?.toString();
 
-// ✅ AiFeedSettingPage와 같은 함수 호출
+          // ✅ 최신 체중 조회 (필요 시 detectionId 연결)
           final double? latestWeight = await fetchLatestWeight(
             // detectionId: detectionId ?? "image_0015",
           );
 
-// 로컬 캐시(마지막 표시값)도 백업으로 사용
+          // 로컬 캐시(마지막 표시값)도 백업으로 사용
           final prefs = await SharedPreferences.getInstance();
           final double? cachedWeight = prefs.getDouble('_catWeight');
 
-// 우선순위: 최신 체중 → 프로필 체중 → 로컬 캐시
+          // 우선순위: 최신 체중 → 프로필 체중 → 로컬 캐시
           final double? weightToUse = latestWeight ?? profileWeight ?? cachedWeight;
 
-// 화면 표시는 소문자 kg로 통일
+          // 화면 표시는 소문자 kg로 통일
           final String weightStr = (weightToUse != null)
               ? '${weightToUse.toStringAsFixed(1)} kg'
               : '몸무게 정보 없음';
@@ -128,7 +125,7 @@ class _HomePageState extends State<HomePage> {
           String? imagePath = cat['image_path'];
           if (imagePath != null) {
             final file = File(imagePath);
-            if (await file.exists()) { // 파일 존재 여부 확인
+            if (await file.exists()) {
               imageFile = file;
             }
           }
@@ -187,7 +184,7 @@ class _HomePageState extends State<HomePage> {
         {'start_time': now.toIso8601String(), 'distance': 500.0},
       ];
 
-      // ✅ 2. 날짜별 distance 합산
+      // ✅ 날짜별 distance 합산
       Map<String, double> activityMap = {};
       for (var item in dummyActivityData) {
         final start = DateTime.parse(item['start_time']);
@@ -199,13 +196,14 @@ class _HomePageState extends State<HomePage> {
       final sortedKeys = activityMap.keys.toList()..sort();
       final recentKeys = sortedKeys.reversed.take(7).toList().reversed.toList();
 
-      // ✅ 3. BarChart 데이터로 변환
+      // ✅ BarChart 데이터로 변환 (툴팁 항상 보이게)
       _dailyActivityBars = recentKeys.asMap().entries.map((entry) {
         final index = entry.key;
         final date = entry.value;
         final level = activityMap[date]!;
         return BarChartGroupData(
           x: index,
+          showingTooltipIndicators: const [0], // ★ 이 막대의 툴팁 항상 표시
           barRods: [
             BarChartRodData(
               toY: level,
@@ -217,7 +215,6 @@ class _HomePageState extends State<HomePage> {
         );
       }).toList();
 
-      // ✅ 4. 상태 업데이트
       if (mounted) {
         setState(() {
           _maxDailyActivity = _dailyActivityBars.isNotEmpty
@@ -244,7 +241,7 @@ class _HomePageState extends State<HomePage> {
 
     final now = DateTime.now();
     final List<Map<String, dynamic>> dummyData = [
-      // 날짜별로 여러 개의 데이터가 있어도 합산되는지 테스트하기 위해 일부 날짜는 2개씩 넣었어.
+      {'time': now.subtract(const Duration(days: 6)).toIso8601String(), 'amount': 18.0},
       {'time': now.subtract(const Duration(days: 5)).toIso8601String(), 'amount': 24.0},
       {'time': now.subtract(const Duration(days: 4)).toIso8601String(), 'amount': 24.0},
       {'time': now.subtract(const Duration(days: 3)).toIso8601String(), 'amount': 24.0},
@@ -255,14 +252,9 @@ class _HomePageState extends State<HomePage> {
       {'time': now.subtract(const Duration(hours: 3)).toIso8601String(), 'amount': 24.0}, // 오늘 데이터
     ];
 
-    // 2. 더미 데이터를 사용해 차트 그리는 로직 (기존 로직과 동일)
+    // ------- 더미 데이터로 차트 만들기 -------
     try {
-      // 실제 서버에서 받아온 데이터라고 가정하고 'data' 변수에 할당
       final List<dynamic> data = dummyData;
-
-      print('--- home_page.dart에서 사용하는 더미 급식량 데이터 ---');
-      print(data);
-      print('------------------------------------------------');
 
       Map<String, double> feedingMap = {};
       for (var item in data) {
@@ -273,8 +265,7 @@ class _HomePageState extends State<HomePage> {
       }
 
       final sortedKeys = feedingMap.keys.toList()..sort();
-
-      _feedingDateLabels = sortedKeys.reversed.take(6).toList().reversed.toList();
+      _feedingDateLabels = sortedKeys.reversed.take(7).toList().reversed.toList();
 
       _dailyFeedingBars = _feedingDateLabels.asMap().entries.map((entry) {
         final index = entry.key;
@@ -282,6 +273,7 @@ class _HomePageState extends State<HomePage> {
         final amount = feedingMap[date]!;
         return BarChartGroupData(
           x: index,
+          showingTooltipIndicators: const [0], // ★ 툴팁 항상 표시
           barRods: [
             BarChartRodData(
               toY: amount,
@@ -310,7 +302,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-
+    // ------- 서버 데이터로 차트 대체 -------
     try {
       final response = await http.get(Uri.parse('http://192.168.100.130:3000/api/feeds/test_stream_1'));
 
@@ -319,15 +311,6 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-
-        print('--- home_page.dart에서 받아온 원본 급식량 데이터 ---');
-        print(data);
-        print('------------------------------------------------');
-
-        print(" 파싱된 급식 데이터 목록:");
-        for (var item in data) {
-          print("➡️ 급식 시간: ${item['time']}, 급식량: ${item['amount']}");
-        }
 
         Map<String, double> feedingMap = {};
         for (var item in data) {
@@ -338,7 +321,7 @@ class _HomePageState extends State<HomePage> {
         }
 
         final sortedKeys = feedingMap.keys.toList()..sort();
-        _feedingDateLabels = sortedKeys.reversed.take(6).toList().reversed.toList();
+        _feedingDateLabels = sortedKeys.reversed.take(7).toList().reversed.toList();
 
         _dailyFeedingBars = _feedingDateLabels.asMap().entries.map((entry) {
           final index = entry.key;
@@ -346,6 +329,7 @@ class _HomePageState extends State<HomePage> {
           final amount = feedingMap[date]!;
           return BarChartGroupData(
             x: index,
+            showingTooltipIndicators: const [0], // ★ 툴팁 항상 표시
             barRods: [
               BarChartRodData(
                 toY: amount,
@@ -427,7 +411,28 @@ class _HomePageState extends State<HomePage> {
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
                   maxY: _maxDailyActivity,
-                  barGroups: _dailyActivityBars,
+                  // ✅ 라벨처럼 보이게 하는 툴팁 설정
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    handleBuiltInTouches: false, // 항상 보이는 모드
+                    touchTooltipData: BarTouchTooltipData(
+                      // ⛳️ 0.68.0에서는 tooltipBgColor → getTooltipColor 로 변경
+                      getTooltipColor: (_) => Colors.transparent, // 배경 투명
+                      tooltipPadding: EdgeInsets.zero,
+                      tooltipMargin: 0,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          rod.toY.toStringAsFixed(0), // 정수로 표기
+                          const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black, // 배경 투명이라 검정 글씨
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  barGroups: _dailyActivityBars, // 생성 시 showingTooltipIndicators 넣어둠
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -464,7 +469,7 @@ class _HomePageState extends State<HomePage> {
                     show: true,
                     drawVerticalLine: false,
                     horizontalInterval: 300,
-                    getDrawingHorizontalLine: (value) => FlLine(color: Colors.white, strokeWidth: 0.5), // 오타 수정
+                    getDrawingHorizontalLine: (value) => FlLine(color: Colors.white, strokeWidth: 0.5),
                   ),
                 ),
               ))
@@ -476,6 +481,26 @@ class _HomePageState extends State<HomePage> {
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
                   maxY: _maxDailyFeeding,
+                  // ✅ 라벨처럼 보이게 하는 툴팁 설정
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    handleBuiltInTouches: false,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => Colors.transparent, // 배경 투명
+                      tooltipPadding: EdgeInsets.zero,
+                      tooltipMargin: 0,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          rod.toY.toStringAsFixed(0), // g 단위라 가정, 정수
+                          const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -499,30 +524,30 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                     ),
-                    // 위쪽 라벨 숨기기
                     topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    // 오른쪽 라벨 숨기기
                     rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
                   borderData: FlBorderData(show: false),
                   gridData: FlGridData(
-                    show: true, // 그리드 선을 표시
-                    drawVerticalLine: false, // 세로선은 끄기
-                    horizontalInterval: 15, // 1단위로 가로선을 그림
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 15,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Colors.black, // 투명도를 준 회색 선
+                        color: Colors.black,
                         strokeWidth: 0.5,
                       );
                     },
                   ),
-                  barGroups: _dailyFeedingBars.map((group) { // 이 부분만 남겨두세요!
+                  // 🔧 그룹을 다시 만들 때도 표시 인덱스가 유지되도록 복사
+                  barGroups: _dailyFeedingBars.map((group) {
                     return BarChartGroupData(
                       x: group.x,
+                      showingTooltipIndicators: group.showingTooltipIndicators, // ★ 유지
                       barRods: group.barRods.map((rod) {
                         return BarChartRodData(
                           toY: rod.toY,
-                          color: Color(0xffab94ee), // 여기에 원하는 색상으로 변경!
+                          color: Color(0xffab94ee), // 색상 유지
                           width: 20,
                           borderRadius: BorderRadius.circular(5),
                         );
@@ -531,7 +556,6 @@ class _HomePageState extends State<HomePage> {
                   }).toList(),
                 ),
               ))),
-
             ),
           ),
         ),
@@ -579,13 +603,34 @@ class _HomePageState extends State<HomePage> {
         alignment: BarChartAlignment.spaceAround,
         maxY: _maxDailyActivity,
         minY: 0,
+        // ✅ 라벨처럼 보이게 하는 툴팁 설정
+        barTouchData: BarTouchData(
+          enabled: true,
+          handleBuiltInTouches: false,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (_) => Colors.transparent, // ⛳️ 배경 투명
+            tooltipPadding: EdgeInsets.zero,
+            tooltipMargin: 0,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                rod.toY.toStringAsFixed(0),
+                const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              );
+            },
+          ),
+        ),
         barGroups:  _dailyActivityBars.map((group) {
           return BarChartGroupData(
             x: group.x,
+            showingTooltipIndicators: group.showingTooltipIndicators, // ★ 유지
             barRods: group.barRods.map((rod) {
               return BarChartRodData(
                 toY: rod.toY,
-                color: Color(0xff5f33e1), // 여기를 원하는 색상으로 변경하면 돼!
+                color: Color(0xff5f33e1), // 기존 색상 유지
                 width: 20,
                 borderRadius: BorderRadius.circular(5),
               );
@@ -640,216 +685,215 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-        // 전체를 Container로 감싸고 배경 이미지 설정
-        decoration: const BoxDecoration(
+      // 전체를 Container로 감싸고 배경 이미지 설정
+      decoration: const BoxDecoration(
         image: DecorationImage(
-        image: AssetImage('lib/assets/bg1.png'), // 이미지 경로
-    fit: BoxFit.cover, // 화면에 꽉 차게 설정
-    ),
-    ),
-    child: Scaffold(
-    backgroundColor: Colors.transparent,
-    appBar: AppBar(
-    backgroundColor: Colors.transparent,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('건강하냥 ', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold),),
-            Image.asset(
-              'lib/assets/cat_icon.png',
-              width: 28, // 이미지 너비 조절
-              height: 28, // 이미지 높이 조절
-            ),
-          ],
+          image: AssetImage('lib/assets/bg1.png'), // 이미지 경로
+          fit: BoxFit.cover, // 화면에 꽉 차게 설정
         ),
-        centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-            tooltip: '메뉴 열기',
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            tooltip: '로그아웃',
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              print('로그아웃: 저장된 고양이 정보 삭제 완료');
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-            },
-          ),
-        ],
       ),
-      drawer: Container(
-    decoration: const BoxDecoration(
-    image: DecorationImage(
-    image: AssetImage('lib/assets/bg1.png'),
-    fit: BoxFit.cover,
-    ),
-    ),
-    child: Drawer(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              margin: EdgeInsets.zero,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                    image:  AssetImage('lib/assets/bg1.png'),
-                  fit: BoxFit.cover,
-                )
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('건강하냥 ', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold),),
+              Image.asset(
+                'lib/assets/cat_icon.png',
+                width: 28, // 이미지 너비 조절
+                height: 28, // 이미지 높이 조절
               ),
-              child: Text('메뉴', style: TextStyle(color: Colors.black, fontSize: 24)),
+            ],
+          ),
+          centerTitle: true,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              tooltip: '메뉴 열기',
             ),
-            ListTile(
-              leading: Image.asset(
-                'lib/assets/weight_icon.png',
-                width: 24, // 이미지 너비 조절
-                height: 24, // 이미지 높이 조절
-              ),
-              title: Text('체중변화'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/changeweight');
-              },
-            ),
-            ListTile(
-              leading: Image.asset(
-                'lib/assets/hairball_icon.png',
-                width: 24, // 이미지 너비 조절
-                height: 24, // 이미지 높이 조절
-              ),
-              title: Text('활동량 변화'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/changemove');
-              },
-            ),
-            ListTile(
-              leading: Image.asset(
-                'lib/assets/food_icon.png',
-                width: 24, // 이미지 너비 조절
-                height: 24, // 이미지 높이 조절
-              ),
-              title: Text('급식 설정'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/feedsetting');
-              },
-            ),
-            // ListTile(
-            //   leading: Image.asset(
-            //     'lib/assets/food_icon.png',
-            //     width: 24, // 이미지 너비 조절
-            //     height: 24, // 이미지 높이 조절
-            //   ),
-            //   title: Text('급식 이력'),
-            //   onTap: () {
-            //     Navigator.pop(context);
-            //     Navigator.pushNamed(context, '/feedrecord');
-            //   },
-            // ),
-            ListTile(
-              leading: Image.asset(
-                'lib/assets/AI.png',
-                width: 26, // 이미지 너비 조절
-                height: 26, // 이미지 높이 조절
-              ),
-              title: Text('AI 분석 요약'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/aianalyze');
-              },
-            ),
-            ListTile(
-              leading: Image.asset(
-                'lib/assets/set_icon.png',
-                width: 24, // 이미지 너비 조절
-                height: 24, // 이미지 높이 조절
-              ),
-              title: Text('설정'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/settings');
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.logout),
+              tooltip: '로그아웃',
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                print('로그아웃: 저장된 고양이 정보 삭제 완료');
+                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
               },
             ),
           ],
         ),
-      ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([
-            _loadLocalCatImage(),
-            _loadCatData(),
-            _loadDailyActivityData(),
-            _loadDailyFeedingData(),
-          ]);
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          children: <Widget>[
-            FutureBuilder<void>(
-              future: _loadCatDataFuture,
-              builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
-                if (snapshot.connectionState == ConnectionState.done) {
-                  if (snapshot.hasError) {
-                    return Center(child: Text("데이터 로드 중 에러 발생: ${snapshot.error} 😿"));
-                  }
-                  return _buildCatInfoSection();
-                } else {
-                  return Center(child: CircularProgressIndicator());
-                }
-              },
+        drawer: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('lib/assets/bg1.png'),
+              fit: BoxFit.cover,
             ),
-            SizedBox(height: 26),
-            _buildTitledChartCard(
-              title: '일일 활동량',
-              rightLabel: '',
-              chart: _buildDailyBarChart(),
-              onTap: () { Navigator.pushNamed(context, '/changemove'); },
-              height: 200,
-              bgColor: Colors.white,
-              leading: Image.asset(    // ✅ 추가됨
-                'lib/assets/hairball_icon.png',
-                width: 24,
-                height: 24,
-              ),
-            ),
-            SizedBox(height: 35),
-            _buildTitledChartCard(
-              title: '급식량',
-              chart: _buildFeedingBarChart(),
-              onTap: () { Navigator.pushNamed(context, '/feedrecord'); },
-              height: 200,
-              titleFontSize: 20,
-              bgColor: const Color(0xffffffff),               // 배경색 화이트로 변경
-              border: Border.all(color: Colors.white, width: 1),
-              leading: Image.asset(    // ✅ 추가됨
-                'lib/assets/food_icon.png',
-                width: 24,
-                height: 24,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  spreadRadius: 1,
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+          ),
+          child: Drawer(
+            backgroundColor: Colors.transparent,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: <Widget>[
+                DrawerHeader(
+                  margin: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image:  AssetImage('lib/assets/bg1.png'),
+                        fit: BoxFit.cover,
+                      )
+                  ),
+                  child: Text('메뉴', style: TextStyle(color: Colors.black, fontSize: 24)),
+                ),
+                ListTile(
+                  leading: Image.asset(
+                    'lib/assets/weight_icon.png',
+                    width: 24, // 이미지 너비 조절
+                    height: 24, // 이미지 높이 조절
+                  ),
+                  title: Text('체중변화'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/changeweight');
+                  },
+                ),
+                ListTile(
+                  leading: Image.asset(
+                    'lib/assets/hairball_icon.png',
+                    width: 24, // 이미지 너비 조절
+                    height: 24, // 이미지 높이 조절
+                  ),
+                  title: Text('활동량 변화'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/changemove');
+                  },
+                ),
+                ListTile(
+                  leading: Image.asset(
+                    'lib/assets/food_icon.png',
+                    width: 24, // 이미지 너비 조절
+                    height: 24, // 이미지 높이 조절
+                  ),
+                  title: Text('급식 설정'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/feedsetting');
+                  },
+                ),
+                // ListTile(
+                //   leading: Image.asset(
+                //     'lib/assets/food_icon.png',
+                //     width: 24,
+                //     height: 24,
+                //   ),
+                //   title: Text('급식 이력'),
+                //   onTap: () {
+                //     Navigator.pop(context);
+                //     Navigator.pushNamed(context, '/feedrecord');
+                //   },
+                // ),
+                ListTile(
+                  leading: Image.asset(
+                    'lib/assets/AI.png',
+                    width: 26,
+                    height: 26,
+                  ),
+                  title: Text('AI 분석 요약'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/aianalyze');
+                  },
+                ),
+                ListTile(
+                  leading: Image.asset(
+                    'lib/assets/set_icon.png',
+                    width: 24,
+                    height: 24,
+                  ),
+                  title: Text('설정'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/settings');
+                  },
                 ),
               ],
             ),
-          ],
+          ),
+        ),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              _loadLocalCatImage(),
+              _loadCatData(),
+              _loadDailyActivityData(),
+              _loadDailyFeedingData(),
+            ]);
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            children: <Widget>[
+              FutureBuilder<void>(
+                future: _loadCatDataFuture,
+                builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    if (snapshot.hasError) {
+                      return Center(child: Text("데이터 로드 중 에러 발생: ${snapshot.error} 😿"));
+                    }
+                    return _buildCatInfoSection();
+                  } else {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                },
+              ),
+              SizedBox(height: 26),
+              _buildTitledChartCard(
+                title: '일일 활동량',
+                rightLabel: '',
+                chart: _buildDailyBarChart(),
+                onTap: () { Navigator.pushNamed(context, '/changemove'); },
+                height: 200,
+                bgColor: Colors.white,
+                leading: Image.asset(    // ✅ 추가됨
+                  'lib/assets/hairball_icon.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+              SizedBox(height: 35),
+              _buildTitledChartCard(
+                title: '급식량',
+                chart: _buildFeedingBarChart(),
+                onTap: () { Navigator.pushNamed(context, '/feedrecord'); },
+                height: 200,
+                titleFontSize: 20,
+                bgColor: const Color(0xffffffff),               // 배경색 화이트로 변경
+                border: Border.all(color: Colors.white, width: 1),
+                leading: Image.asset(    // ✅ 추가됨
+                  'lib/assets/food_icon.png',
+                  width: 24,
+                  height: 24,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-
     );
   }
 
@@ -875,7 +919,6 @@ class _HomePageState extends State<HomePage> {
           onTap: onTap,
           child: Container(
             height: 200,
-            // padding: const EdgeInsets.only(top: 10, right: 10), // 기존 _buildDailyActivityBarChart 안에 있었던 padding은 차트 안에 포함되므로 여기서는 제거
             decoration: BoxDecoration(
               color: Colors.white, // 배경색을 여기서 지정
               borderRadius: BorderRadius.circular(12),
@@ -889,7 +932,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.only(top: 10, right: 10, left: 10), // 필요에 따라 조정
+              padding: const EdgeInsets.only(top: 10, right: 10, left: 10),
               child: chartWidget,
             ),
           ),
@@ -898,9 +941,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
-//없애도 된다고 하는데 없애면 자꾸 화면이 안나옴
-// ChartCard 빌더 함수
+  // ChartCard 빌더 함수
   Widget _buildTitledChartCard({
     required String title,
     required Widget chart,
@@ -972,7 +1013,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-// 급식량 바차트 빌더 (클래스 상태값 사용)
+  // 급식량 바차트 빌더 (클래스 상태값 사용)
   Widget _buildFeedingBarChart() {
     if (_isFeedingLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -985,6 +1026,26 @@ class _HomePageState extends State<HomePage> {
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
         maxY: _maxDailyFeeding,
+        // ✅ 라벨처럼 보이게 하는 툴팁 설정
+        barTouchData: BarTouchData(
+          enabled: true,
+          handleBuiltInTouches: false,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (_) => Colors.transparent, // ⛳️ 배경 투명
+            tooltipPadding: EdgeInsets.zero,
+            tooltipMargin: 0,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                rod.toY.toStringAsFixed(0),
+                const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              );
+            },
+          ),
+        ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
@@ -1030,10 +1091,11 @@ class _HomePageState extends State<HomePage> {
         barGroups: _dailyFeedingBars.map((group) {
           return BarChartGroupData(
             x: group.x,
+            showingTooltipIndicators: group.showingTooltipIndicators, // ★ 유지
             barRods: group.barRods.map((rod) {
               return BarChartRodData(
                 toY: rod.toY,
-                color: const Color(0xffab94ee), // 급식량 바 색상
+                color: const Color(0xffab94ee), // 급식량 바 색상 (유지)
                 width: 20,
                 borderRadius: BorderRadius.circular(5),
               );
@@ -1043,9 +1105,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-
-
-
-
 }

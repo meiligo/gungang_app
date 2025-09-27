@@ -130,12 +130,12 @@ class _SelfFeedingPageState extends State<SelfFeedingPage> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-
+            SizedBox(height: 15,),
             RichText(
               text: TextSpan(
                 style: const TextStyle(fontSize: 18, color: Colors.black), // 기본 스타일
                 children: [
-                  const TextSpan(text: '현재 몸무게는 '),
+                  const TextSpan(text: '현재 체중 :  '),
                   TextSpan(
                     text: _catWeight, // 이 부분만 스타일 다르게
                     style: const TextStyle(
@@ -144,15 +144,15 @@ class _SelfFeedingPageState extends State<SelfFeedingPage> {
                       color: Color(0xff5f33e1), // 파란색
                     ),
                   ),
-                  const TextSpan(text: ' kg 입니다.'),
+                  const TextSpan(text: ' kg'),
                 ],
               ),
             ),
 
+            SizedBox(height: 6,),
+            Text('상태 : 정상 범위',style: TextStyle(fontSize: 18),),
             SizedBox(height: 20,),
-            Text('현재 체중은 정상범위 입니다.',style: TextStyle(fontSize: 18),),
-            SizedBox(height: 20,),
-            Text('급식할 사료량을 선택하세요', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            Text('급식할 사료량을 선택하세요', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
             Text('${_selectedAmount.toStringAsFixed(1)} g',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
