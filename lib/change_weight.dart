@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
+import 'dart:convert';                       // ★ 추가
+import 'package:http/http.dart' as http;     // ★ 추가
+import 'package:shared_preferences/shared_preferences.dart'; // ★ 추가
 
 // 간단한 체중 데이터 모델 (서버 응답 구조에 맞게 수정 필요)
 class WeightData {
@@ -22,23 +25,26 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
   final List<String> _allButtons = List.generate(20, (index) => '로그확인 ${index + 1}');
   int _visibleCount = 1;
 
+  // ★ 서버 접속 기본값
+  final String _apiBase = 'http://192.168.100.130:3000/api/health'; // 엔드포인트 베이스
+  final int _rangeWeeks = 6;                                        // 최근 n주
+  final String _groupBy = 'week';                                   // week|day|raw
+
   // ========= 상위 여백 조절용 =========
-  // 이 값만 바꾸면 화면 콘텐츠 전체가 아래로 내려갑니다. (기본 0)
   double topExtraSpacing = 0.0;
-  double gapBetweenChartAndInfo = 30.0; // ← 여기 값만 바꾸면 그래프와 안내박스 사이 여백이 변해요
+  double gapBetweenChartAndInfo = 30.0; // 그래프와 안내박스 사이 여백
 
   // ========= 스타일/옵션(원하는 대로 조절) =========
-  // 선/점/축/라벨
-  final Color lineColor = const Color(0xFF5F33E1); // 선 색상 #5f33e1
-  final double lineWidth = 3.0;                    // 선 두께
-  final double dotRadius = 3.5;                    // 점 크기
-  final Color valueLabelColor = Colors.black;      // 점 위 숫자 색
-  final double valueLabelFontSize = 12.0;          // 점 위 숫자 폰트 크기
-  final Color axisLabelColor = Colors.black87;     // 축 라벨 색
-  final Color gray = Color(0xff4a4a4a);            // 축 그레이 색
-  final Color lightGray = Color(0xffaaaaaa);       // 축 연그레이 색
-  final double axisLabelFontSize = 10.0;           // 축 라벨 폰트
-  final double yInterval = 0.2;                    // 0.2kg 간격
+  final Color lineColor = const Color(0xFF5F33E1);
+  final double lineWidth = 3.0;
+  final double dotRadius = 3.5;
+  final Color valueLabelColor = Colors.black;
+  final double valueLabelFontSize = 12.0;
+  final Color axisLabelColor = Colors.black87;
+  final Color gray = Color(0xff4a4a4a);
+  final Color lightGray = Color(0xffaaaaaa);
+  final double axisLabelFontSize = 10.0;
+  final double yInterval = 0.2;
 
   // 차트/라벨 페인터 좌표 보정용 패딩(차트/Painter 동일 사용)
   final double leftReservedSize = 44;
@@ -50,7 +56,7 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
   final bool showMaxBox = true;
   final Color maxBoxStrokeColor = const Color(0xFF5F33E1);
   final double maxBoxStrokeWidth = 2.0;
-  final Color maxBoxFillColor = const Color(0x1A5F33E1); // 10% 투명
+  final Color maxBoxFillColor = const Color(0x1A5F33E1);
   final double maxBoxWidth = 60;
   final double maxBoxHeight = 28;
   final double maxBoxCorner = 8;
@@ -64,15 +70,15 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
   );
 
   // ========= ✅ AI 체중 예측 안내 박스 옵션 =========
-  final bool showAiInfoBox = true;                               // 표시/숨김
-  final Color aiInfoBgColor = const Color(0xFFAB94EE);           // #AB94EE
-  final Color aiInfoTextColor = Colors.white;                    // 텍스트 색
-  double aiInfoFontSize = 12.0;                                  // 폰트 크기 (조절 가능)
-  final double aiInfoBorderRadius = 10.0;                        // 둥근모서리
+  final bool showAiInfoBox = true;
+  final Color aiInfoBgColor = const Color(0xFFAB94EE);
+  final Color aiInfoTextColor = Colors.white;
+  double aiInfoFontSize = 12.0;
+  final double aiInfoBorderRadius = 10.0;
   final EdgeInsets aiInfoPadding = const EdgeInsets.fromLTRB(12, 10, 12, 12);
-  final FontWeight aiInfoTitleWeight = FontWeight.w700;          // 굵기 (제목)
-  final FontWeight aiInfoBodyWeight  = FontWeight.w400;          // 굵기 (본문)
-  final FontWeight aiInfoEmphWeight  = FontWeight.w700;          // 굵기 (강조)
+  final FontWeight aiInfoTitleWeight = FontWeight.w700;
+  final FontWeight aiInfoBodyWeight  = FontWeight.w400;
+  final FontWeight aiInfoEmphWeight  = FontWeight.w700;
 
   @override
   void initState() {
@@ -80,25 +86,76 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
     _fetchWeightData(); // 화면 시작 시 데이터 가져오기
   }
 
-  // --- 서버에서 데이터 가져오는 함수 (Placeholder) ---
-  Future<void> _fetchWeightData() async {
-    setState(() { _isLoading = true; });
+  // --- 서버에서 데이터 가져오는 함수 (실동) ---
+  Future<void> _fetchWeightData() async {                 // ★ 교체
+    setState(() => _isLoading = true);
 
-    await Future.delayed(const Duration(milliseconds: 600)); // 임시 딜레이
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    final dummyData = [
-      WeightData(timeLabel: '5주전', weight: 2.9),
-      WeightData(timeLabel: '4주전', weight: 2.9),
-      WeightData(timeLabel: '3주전', weight: 3.1),
-      WeightData(timeLabel: '2주전', weight: 3.2), // 최고점
-      WeightData(timeLabel: '1주전', weight: 3.1),
-      WeightData(timeLabel: '현재', weight: 3.0),
-    ];
+      // 1) catId 우선 사용, 없으면 userId로 첫 고양이 조회해 catId 확보
+      String? catId = prefs.getString('_catId');
+      if (catId == null || catId.isEmpty) {
+        final userId = prefs.getString('userId');
+        if (userId == null) throw Exception('userId/catId 없음');
 
-    setState(() {
-      _weightHistory = dummyData;
-      _isLoading = false;
-    });
+        final catRes = await http.get(
+          Uri.parse('http://192.168.100.130:3000/api/cats/$userId'),
+        );
+        if (catRes.statusCode != 200) {
+          throw Exception('고양이 조회 실패: ${catRes.statusCode}');
+        }
+        final cats = json.decode(catRes.body);
+        if (cats is! List || cats.isEmpty) {
+          throw Exception('등록된 고양이 없음');
+        }
+        final first = cats.first;
+        catId = (first['_id'] ?? first['id'] ?? '').toString();
+        if (catId.isEmpty) throw Exception('catId 파싱 실패');
+        await prefs.setString('_catId', catId);
+      }
+
+      // 2) 시계열 체중 조회
+      final uri = Uri.parse(
+        '$_apiBase/cats/$catId/weights?rangeWeeks=$_rangeWeeks&groupBy=$_groupBy',
+      );
+      final res = await http.get(uri);
+      if (res.statusCode != 200) {
+        throw Exception('체중 조회 실패: ${res.statusCode}');
+      }
+
+      final Map<String, dynamic> body = json.decode(res.body);
+      final List pts = (body['points'] ?? []) as List;
+
+      // 3) 시간 정렬 + 라벨 생성
+      final now = DateTime.now();
+      final raw = pts.map((p) {
+        final t = DateTime.parse(p['t'] as String);
+        final w = (p['w'] as num).toDouble();
+        return {'t': t, 'w': w};
+      }).toList()
+        ..sort((a, b) => (a['t'] as DateTime).compareTo(b['t'] as DateTime));
+
+      final history = raw.map((e) {
+        final t = e['t'] as DateTime;
+        final w = e['w'] as double;
+        final diffDays = now.difference(t).inDays;
+        final weeks = (diffDays / 7).floor();
+        final label = weeks <= 0 ? '현재' : '${weeks}주전';
+        return WeightData(timeLabel: label, weight: w);
+      }).toList();
+
+      setState(() {
+        _weightHistory = history;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('fetchWeightData error: $e');
+      setState(() {
+        _weightHistory = [];
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -130,7 +187,6 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
         ),
         body: SingleChildScrollView(
           child: Padding(
-            // 🔧 상단 여백만 가변: base 16 + topExtraSpacing
             padding: EdgeInsets.fromLTRB(16, 16 + topExtraSpacing, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -159,12 +215,13 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
                           ? const Center(child: CircularProgressIndicator())
                           : _weightHistory.isEmpty
                           ? const Center(child: Text('체중 기록이 없습니다.'))
-                          : _buildChart(), // ← 실제 그래프
+                          : _buildChart(),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                // const SizedBox(height: 12),                // 기존 고정
+                SizedBox(height: gapBetweenChartAndInfo),     // ★ 여백 변수 적용
 
                 // ✅ AI 체중 예측 안내 박스 (그래프와 로그 버튼 사이)
                 if (showAiInfoBox) _buildAiInfoPanel(),
@@ -314,8 +371,8 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
         lineBarsData: [
           LineChartBarData(
             spots: spots,
-            isCurved: false,          // 꺾은선
-            color: lineColor,         // #5f33e1
+            isCurved: false,
+            color: lineColor,
             barWidth: lineWidth,
             isStrokeCapRound: true,
             dotData: FlDotData(
@@ -427,10 +484,10 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
     );
   }
 
-  // ✅ AI 체중 예측 안내 박스 — 쉽게 붙였다 뗄 수 있는 함수
+  // ✅ AI 체중 예측 안내 박스
   Widget _buildAiInfoPanel() {
     return Container(
-      width: double.infinity, // 부모 Column의 너비(= 화면 패딩 내)로 확장
+      width: double.infinity,
       padding: aiInfoPadding,
       decoration: BoxDecoration(
         color: aiInfoBgColor,
@@ -444,11 +501,8 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
         color: aiInfoTextColor,
       ),
     );
-
   }
 
-  /// ✅ 안내 문구를 부분 굵기(Bold)로 쉽게 바꿀 수 있는 빌더
-  ///    - fontSize, 굵기(제목/본문/강조), 색상을 한 번에 조절
   Widget _buildAiInfoRichText({
     required double fontSize,
     required FontWeight titleWeight,
@@ -460,15 +514,11 @@ class _ChangeWeightPageState extends State<ChangeWeightPage> {
       TextSpan(
         style: TextStyle(fontSize: fontSize, color: color, height: 1.35),
         children: [
-          // 제목
           TextSpan(text: '• AI 체중 예측 안내\n', style: TextStyle(fontWeight: titleWeight)),
-          // 본문 1
           const TextSpan(text: 'YOLO+CNN ',),
           TextSpan(text: '기반 예측값', style: TextStyle(fontWeight: emphWeight)),
           TextSpan(text: '입니다.\n', style: TextStyle(fontWeight: bodyWeight)),
-          // 본문 2
           TextSpan(text: '자세·조명에 따라 오차가 있을 수 있으며,\n', style: TextStyle(fontWeight: bodyWeight)),
-          // 본문 3 (정밀도 강조)
           TextSpan(text: '데이터가 쌓이면 ', style: TextStyle(fontWeight: bodyWeight)),
           TextSpan(text: '±0.1kg', style: TextStyle(fontWeight: emphWeight)),
           TextSpan(text: '까지 정밀해집니다.', style: TextStyle(fontWeight: bodyWeight)),
@@ -489,7 +539,7 @@ class _ValueLabelPainter extends CustomPainter {
   final double minX, maxX, minY, maxY;
   final double leftReservedSize, topPadding, rightPadding, bottomPadding;
   final TextStyle textStyle;
-  final double labelGap; // 선/점으로부터 띄우는 픽셀 거리
+  final double labelGap;
 
   _ValueLabelPainter({
     required this.spots,
@@ -527,7 +577,6 @@ class _ValueLabelPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      // 기본: 점의 바로 위로 labelGap만큼 띄우기
       final labelPos = Offset(p.dx - tp.width / 2, p.dy - tp.height - labelGap);
       tp.paint(canvas, labelPos);
     }
@@ -562,7 +611,7 @@ class _MaxBoxPainter extends CustomPainter {
   final double strokeWidth;
   final Color strokeColor;
   final Color fillColor;
-  final double yOffset;     // 점 기준 위로 띄우는 픽셀
+  final double yOffset;
   final bool showLabel;
   final String labelText;
   final TextStyle labelStyle;
@@ -594,18 +643,15 @@ class _MaxBoxPainter extends CustomPainter {
     final chartWidth = size.width - leftReservedSize - rightPadding;
     final chartHeight = size.height - topPadding - bottomPadding;
 
-    // Spot → 픽셀
     final dx = leftReservedSize + ((spot.x - minX) / (maxX - minX)) * chartWidth;
     final dy = topPadding + (1 - ((spot.y - minY) / (maxY - minY))) * chartHeight;
 
-    // 박스를 점 위로 yOffset만큼 올려서 중앙 정렬
     Rect box = Rect.fromCenter(
-      center: Offset(dx, dy - yOffset - 20), // 최고 텍스트 위에
+      center: Offset(dx, dy - yOffset - 20),
       width: boxWidth,
       height: boxHeight,
     );
 
-    // 경계 밖으로 나가는 경우 약간의 클램프
     final double leftBound = leftReservedSize + 2;
     final double rightBound = size.width - rightPadding - 2;
     final double topBound = topPadding + 2;
@@ -624,20 +670,17 @@ class _MaxBoxPainter extends CustomPainter {
 
     final rrect = RRect.fromRectAndRadius(box, Radius.circular(boxCorner));
 
-    // 채우기
     final fillPaint = Paint()
       ..style = PaintingStyle.fill
       ..color = fillColor;
     canvas.drawRRect(rrect, fillPaint);
 
-    // 테두리
     final strokePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..color = strokeColor;
     canvas.drawRRect(rrect, strokePaint);
 
-    // 내부 텍스트(옵션)
     if (showLabel && labelText.isNotEmpty) {
       final tp = TextPainter(
         text: TextSpan(text: labelText, style: labelStyle),
